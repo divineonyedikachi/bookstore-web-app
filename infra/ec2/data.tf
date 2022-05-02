@@ -61,7 +61,7 @@ locals {
   asg_tags = [
     {
       key                 = "Name"
-      value               = "${var.project_name}-${var.application_name}-asg-instance-${var.environment}-${random_id.asg_random.hex}"
+      value               = "${var.project_name}-${var.application_name}-instance-${var.environment}-${random_id.asg_random.hex}"
       propagate_at_launch = true
     },
     {
