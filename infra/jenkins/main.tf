@@ -1,15 +1,15 @@
-resource "random_id" "asg_random" {
+resource "random_id" "random" {
   byte_length = 4
 }
 
 # Instance IAM profile, roles and policies
-resource "aws_iam_instance_profile" "asg_instance_profile" {
-  name = "${var.application_name}-instance-profile-${var.environment}-${random_id.asg_random.hex}"
-  role = aws_iam_role.asg_instance_role.name
+resource "aws_iam_instance_profile" "instance_profile" {
+  name = "${var.application_name}-instance-profile-${var.environment}-${random_id.random.hex}"
+  role = aws_iam_role.instance_role.name
 }
 
-resource "aws_iam_role" "asg_instance_role" {
-  name = "${var.application_name}-instance-role-${var.environment}-${random_id.asg_random.hex}"
+resource "aws_iam_role" "instance_role" {
+  name = "${var.application_name}-instance-role-${var.environment}-${random_id.random.hex}"
   assume_role_policy = jsonencode(
     {
       Version = "2012-10-17"
@@ -27,8 +27,8 @@ resource "aws_iam_role" "asg_instance_role" {
   )
 }
 
-resource "aws_iam_policy" "asg_instance_s3_policy" {
-  name        = "${var.application_name}-s3-policy-${var.environment}-${random_id.asg_random.hex}"
+resource "aws_iam_policy" "instance_s3_policy" {
+  name        = "${var.application_name}-s3-policy-${var.environment}-${random_id.random.hex}"
   description = "iam access policy for ${var.project_name} ${var.application_name} instance access to s3"
 
   policy = <<EOF
@@ -47,21 +47,21 @@ resource "aws_iam_policy" "asg_instance_s3_policy" {
 EOF
 }
 
-resource "aws_iam_role_policy_attachment" "asg_s3_policy_attach" {
-  role       = aws_iam_role.asg_instance_role.name
-  policy_arn = aws_iam_policy.asg_instance_s3_policy.arn
+resource "aws_iam_role_policy_attachment" "s3_policy_attach" {
+  role       = aws_iam_role.instance_role.name
+  policy_arn = aws_iam_policy.instance_s3_policy.arn
 }
 
-resource "aws_iam_role_policy_attachment" "asg_ssm_policy_attach" {
-  role       = aws_iam_role.asg_instance_role.name
-  policy_arn = data.aws_iam_policy.asg_ssm_instance_policy.arn
+resource "aws_iam_role_policy_attachment" "ssm_policy_attach" {
+  role       = aws_iam_role.instance_role.name
+  policy_arn = data.aws_iam_policy.ssm_instance_policy.arn
 }
 
 
 resource "aws_iam_service_linked_role" "autoscaling" {
   aws_service_name = "autoscaling.amazonaws.com"
   description      = "A service linked role for ${var.project_name} ${var.application_name} autoscaling"
-  custom_suffix    = "${var.application_name}-${var.environment}-${random_id.asg_random.hex}"
+  custom_suffix    = "${var.application_name}-${var.environment}-${random_id.random.hex}"
 
   # Sometimes good sleep is required to have some IAM resources created before they can be used
   provisioner "local-exec" {
@@ -70,8 +70,8 @@ resource "aws_iam_service_linked_role" "autoscaling" {
 }
 
 # Security groups
-resource "aws_security_group" "asg_sg" {
-  name        = "${var.application_name}-sg-${var.environment}-${random_id.asg_random.hex}"
+resource "aws_security_group" "instance_sg" {
+  name        = "${var.application_name}-sg-${var.environment}-${random_id.random.hex}"
   description = "asg repo private security group"
   vpc_id      = data.aws_vpc.selected.id
 
@@ -90,8 +90,8 @@ resource "aws_security_group" "asg_sg" {
   }
 }
 
-resource "aws_security_group" "elb_sg" {
-  name        = "${var.application_name}-lb-sg-${var.environment}-${random_id.asg_random.hex}"
+resource "aws_security_group" "lb_sg" {
+  name        = "${var.application_name}-lb-sg-${var.environment}-${random_id.random.hex}"
   description = "ELB security group"
   vpc_id      = data.aws_vpc.selected.id
 
@@ -112,94 +112,72 @@ resource "aws_security_group" "elb_sg" {
 
 
 
-// module "s3_logging_bucket" {
-//   source  = "operatehappy/s3-bucket/aws"
-//   version = "1.2.0"
-//   name    = "${lower(local.s3_logging_bucket_name)}-logging--${random_id.asg_random.hex}"
-//   acl     = "log-delivery-write"
+module "alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "~> 6.0"
 
-//   force_destroy = true
+  name = "${var.application_name}-alb-${var.environment}-${random_id.random.hex}"
 
-//   server_side_encryption_configuration = {
-//     sse_algorithm = "AES256"
-//   }
-// }
+  load_balancer_type = "application"
 
+  vpc_id             = data.aws_vpc.selected.id
+  subnets            = [for s in data.aws_subnet.public_subnet_lists : s.id]
+  security_groups    = [aws_security_group.lb_sg.id]
 
-module "asg_elb" {
-  source  = "terraform-aws-modules/elb/aws"
-  version = "3.0.1"
-  name    = "${var.application_name}-elb-${var.environment}-${random_id.asg_random.hex}"
+  target_groups = [
+    {
+      name      = "${var.application_name}-alb-tg-${var.environment}-${random_id.random.hex}"
+      backend_protocol = "HTTP"
+      backend_port     = 8080
+      target_type      = "instance"
+      targets = [
+        {
+          target_id = module.jenkins.id
+          port = 8080
+        }
+      ]
+    }
+  ]
 
-  subnets         = [for s in data.aws_subnet.public_subnet_lists : s.id]
-  security_groups = [aws_security_group.elb_sg.id]
-  internal        = false
-
-  listener = var.asg_elb_listeners
-
-  health_check = {
-    healthy_threshold   = var.elb_healthy_threshold
-    unhealthy_threshold = var.elb_unhealthy_threshold
-    timeout             = var.elb_timeout
-    target              = "TCP:22"
-    interval            = var.elb_interval
-  }
+  http_tcp_listeners = [
+    {
+      port               = 80
+      protocol           = "HTTP"
+      target_group_index = 0
+    }
+  ]
 
   tags = local.tags
 }
 
 
-module "asg" {
-  source  = "terraform-aws-modules/autoscaling/aws"
-  version = "5.1.1"
 
-  # Autoscaling group
-  name = "${var.application_name}-asg-${var.environment}-${random_id.asg_random.hex}"
+module "jenkins" {
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  version = "3.5.0"
 
-  min_size                  = var.min_size
-  max_size                  = var.max_size
-  desired_capacity          = var.desired_capacity
-  wait_for_capacity_timeout = 0
-  health_check_grace_period = var.asg_grace
-  vpc_zone_identifier       = [for s in data.aws_subnet.private_subnet_lists : s.id]
+  name = "${var.project_name}-${var.application_name}-instance-${var.environment}-${random_id.random.hex}"
+  iam_instance_profile = aws_iam_instance_profile.instance_profile.name
 
-  initial_lifecycle_hooks = var.asg_initial_lifecycle_hooks
+  subnet_id       = element(data.aws_subnets.private_subnets.ids, 0)
+  vpc_security_group_ids = [aws_security_group.instance_sg.id]
 
-  load_balancers = [module.asg_elb.elb_name]
-
-  # Launch template
-  create_launch_template      = true
-  launch_template_name        = "${var.application_name}-lt-${var.environment}-${random_id.asg_random.hex}"
-  launch_template_description = "asg ec2 launch template for ${var.project_name}'s ${var.application_name} instances in ${var.environment}."
-  update_default_version      = true
-
-  security_groups = [aws_security_group.asg_sg.id]
-
-  image_id          = var.asg_ami_id
-  instance_type     = var.asg_instance_type
-  key_name          = var.asg_ssh_key_name
+  ami          = var.ami_id
+  instance_type     = var.instance_type
+  associate_public_ip_address = false
+  key_name          = var.ssh_key_name
   user_data_base64  = base64encode(local.user_data)
-  ebs_optimized     = true
-  enable_monitoring = true
 
-  block_device_mappings = var.asg_block_device_mappings
-
-  metadata_options = {
-    http_endpoint               = "enabled"
-    http_tokens                 = "required"
-    http_put_response_hop_limit = 32
-  }
-
-  tag_specifications = [
+  root_block_device = [
     {
-      resource_type = "instance"
-      tags          = { resourceType = "Instance" }
-    },
-    {
-      resource_type = "volume"
-      tags          = { resourceType = "Volume" }
-    }
-  ]
+      encrypted   = true
+      volume_type = "gp3"
+      volume_size = var.instance_root_device_size
+      tags = {
+        Name = "${var.project_name}-${var.application_name}-root-ebs-${var.environment}-${random_id.random.hex}"
+        }
+      },
+    ]
 
   tags = local.tags
   // tags_as_map = local.tags
