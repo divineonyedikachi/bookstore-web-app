@@ -1,0 +1,16 @@
+pipeline {
+    agent any
+    stages {
+        stage('Checkout code') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Code Build') {
+            steps {
+                echo 'Running maven build'
+                sh 'mvn clean install -DskipTests'
+            }
+        }
+    }
+}

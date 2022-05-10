@@ -66,25 +66,3 @@ variable "instance_root_device_size" {
   type = number
 }
 
-variable "security_group_allow_public_cidrs" {
-  type = list(string)
-}
-
-
-# elb vars
-variable "elb_listeners" {
-  type = list(map(string))
-}
-
-variable "elb_healthy_threshold" {
-}
-
-variable "elb_unhealthy_threshold" {
-}
-
-variable "elb_timeout" {
-}
-
-variable "elb_interval" {
-}
-

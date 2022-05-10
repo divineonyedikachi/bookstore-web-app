@@ -80,7 +80,7 @@ resource "aws_security_group" "instance_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = var.security_group_allow_public_cidrs
+    cidr_blocks = [data.aws_vpc.selected.cidr_block]
   }
   egress {
     from_port   = 0
@@ -97,12 +97,12 @@ module "instance" {
   name = "${var.project_name}-${var.application_name}-instance-${var.environment}-${random_id.random.hex}"
   iam_instance_profile = aws_iam_instance_profile.instance_profile.name
 
-  subnet_id       = element(data.aws_subnets.public_subnets.ids, 0)
+  subnet_id       = element(data.aws_subnets.private_subnets.ids, 0)
   vpc_security_group_ids = [aws_security_group.instance_sg.id]
 
   ami          = var.ami_id
   instance_type     = var.instance_type
-  associate_public_ip_address = true
+  associate_public_ip_address = false
   key_name          = var.ssh_key_name
   user_data_base64  = base64encode(local.user_data)
 
