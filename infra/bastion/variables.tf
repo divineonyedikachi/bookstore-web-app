@@ -43,8 +43,32 @@ variable "private_subnets_tag" {
   type        = list(string)
 }
 
+
+# asg vars
+variable "ssh_key_name" {
+  type = string
+}
+
+
+// variable "ami_filter_value" {
+//   type = list(string)
+// }
+
+variable "ami_id" {
+  type = string
+}
+
+variable "instance_type" {
+  type = string
+}
+
+variable "instance_root_device_size" {
+  type = number
+}
+
+
 # elb vars
-variable "asg_elb_listeners" {
+variable "elb_listeners" {
   type = list(map(string))
 }
 
@@ -58,49 +82,5 @@ variable "elb_timeout" {
 }
 
 variable "elb_interval" {
-}
-
-
-# asg vars
-variable "asg_ssh_key_name" {
-  type = string
-}
-
-variable "asg_grace" {
-  type = string
-}
-
-variable "min_size" {
-}
-
-variable "max_size" {
-}
-
-variable "desired_capacity" {
-}
-
-variable "health_check_type" {
-  type = string
-}
-
-variable "asg_instance_type" {
-  type = string
-}
-
-// variable "asg_ami_filter_value" {
-//   type = list(string)
-// }
-
-variable "asg_ami_id" {
-  type = string
-}
-
-variable "asg_initial_lifecycle_hooks" {
-  type    = list(map(string))
-  default = []
-}
-
-variable "asg_block_device_mappings" {
-  type = list(any)
 }
 

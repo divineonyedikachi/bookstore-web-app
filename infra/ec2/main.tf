@@ -91,17 +91,23 @@ resource "aws_security_group" "asg_sg" {
 }
 
 
+resource "aws_security_group" "asg_elb_sg" {
+  name        = "${var.application_name}-lb-sg-${var.environment}-${random_id.asg_random.hex}"
+  description = "ELB security group"
+  vpc_id      = data.aws_vpc.selected.id
 
-module "s3_logging_bucket" {
-  source  = "operatehappy/s3-bucket/aws"
-  version = "1.2.0"
-  name    = "${lower(local.s3_logging_bucket_name)}-logging--${random_id.asg_random.hex}"
-  acl     = "log-delivery-write"
-
-  force_destroy = true
-
-  server_side_encryption_configuration = {
-    sse_algorithm = "AES256"
+  # Access from other security groups
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
@@ -111,8 +117,8 @@ module "asg_elb" {
   version = "3.0.1"
   name    = "${var.application_name}-elb-${var.environment}-${random_id.asg_random.hex}"
 
-  subnets         = [for s in data.aws_subnet.subnet_lists : s.id]
-  security_groups = [aws_security_group.asg_sg.id]
+  subnets         = [for s in data.aws_subnet.public_subnet_lists : s.id]
+  security_groups = [aws_security_group.asg_elb_sg.id]
   internal        = false
 
   listener = var.asg_elb_listeners
@@ -141,7 +147,7 @@ module "asg" {
   desired_capacity          = var.desired_capacity
   wait_for_capacity_timeout = 0
   health_check_grace_period = var.asg_grace
-  vpc_zone_identifier       = [for s in data.aws_subnet.subnet_lists : s.id]
+  vpc_zone_identifier       = [for s in data.aws_subnet.private_subnet_lists : s.id]
 
   initial_lifecycle_hooks = var.asg_initial_lifecycle_hooks
 

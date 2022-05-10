@@ -38,18 +38,47 @@ data "aws_subnet" "subnet_all_lists" {
 // }
 
 # bring your own subnets. 
-data "aws_subnet_ids" "subnets" {
-  vpc_id = data.aws_vpc.selected.id
+// data "aws_subnet_ids" "subnets" {
+//   vpc_id = data.aws_vpc.selected.id
+//   filter {
+//     name   = "tag:Name"
+//     values = ["${var.project_name}-private*"]
+//   }
+// }
+
+// data "aws_subnet" "subnet_lists" {
+//   for_each = data.aws_subnet_ids.subnets.ids
+//   id       = each.value
+// }
+
+
+data "aws_subnets" "private_subnets" {
   filter {
     name   = "tag:Name"
     values = ["${var.project_name}-private*"]
   }
 }
 
-data "aws_subnet" "subnet_lists" {
-  for_each = data.aws_subnet_ids.subnets.ids
+data "aws_subnet" "private_subnet_lists" {
+  for_each = toset(data.aws_subnets.private_subnets.ids)
   id       = each.value
 }
+
+
+data "aws_subnets" "public_subnets" {
+  filter {
+    name   = "tag:Name"
+    values = ["${var.project_name}-public*"]
+  }
+}
+
+data "aws_subnet" "public_subnet_lists" {
+  for_each = toset(data.aws_subnets.public_subnets.ids)
+  id       = each.value
+}
+
+
+
 
 data "aws_iam_policy" "asg_ssm_instance_policy" {
   name = "AmazonSSMManagedInstanceCore"

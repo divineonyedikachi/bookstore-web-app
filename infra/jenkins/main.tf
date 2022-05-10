@@ -90,7 +90,7 @@ resource "aws_security_group" "instance_sg" {
   }
 }
 
-resource "aws_security_group" "lb_sg" {
+resource "aws_security_group" "elb_sg" {
   name        = "${var.application_name}-lb-sg-${var.environment}-${random_id.random.hex}"
   description = "ELB security group"
   vpc_id      = data.aws_vpc.selected.id
@@ -111,48 +111,36 @@ resource "aws_security_group" "lb_sg" {
 }
 
 
+module "elb" {
+  source  = "terraform-aws-modules/elb/aws"
+  version = "3.0.1"
+  name    = "${var.application_name}-elb-${var.environment}-${random_id.random.hex}"
 
-module "alb" {
-  source  = "terraform-aws-modules/alb/aws"
-  version = "~> 6.0"
+  subnets         = [for s in data.aws_subnet.public_subnet_lists : s.id]
+  security_groups = [aws_security_group.elb_sg.id]
+  internal        = false
 
-  name = "${var.application_name}-alb-${var.environment}-${random_id.random.hex}"
+  listener = var.elb_listeners
 
-  load_balancer_type = "application"
-
-  vpc_id             = data.aws_vpc.selected.id
-  subnets            = [for s in data.aws_subnet.public_subnet_lists : s.id]
-  security_groups    = [aws_security_group.lb_sg.id]
-
-  target_groups = [
-    {
-      name      = "${var.application_name}-alb-tg-${var.environment}-${random_id.random.hex}"
-      backend_protocol = "HTTP"
-      backend_port     = 8080
-      target_type      = "instance"
-      targets = [
-        {
-          target_id = module.jenkins.id
-          port = 8080
-        }
-      ]
-    }
-  ]
-
-  http_tcp_listeners = [
-    {
-      port               = 80
-      protocol           = "HTTP"
-      target_group_index = 0
-    }
-  ]
+  health_check = {
+    healthy_threshold   = var.elb_healthy_threshold
+    unhealthy_threshold = var.elb_unhealthy_threshold
+    timeout             = var.elb_timeout
+    target              = "TCP:22"
+    interval            = var.elb_interval
+  }
+  instances           = [module.instance.id]
+  number_of_instances = 1
 
   tags = local.tags
+
+  // depends_on = [
+  //   module.instance,
+  // ]
 }
 
 
-
-module "jenkins" {
+module "instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "3.5.0"
 
@@ -173,9 +161,6 @@ module "jenkins" {
       encrypted   = true
       volume_type = "gp3"
       volume_size = var.instance_root_device_size
-      tags = {
-        Name = "${var.project_name}-${var.application_name}-root-ebs-${var.environment}-${random_id.random.hex}"
-        }
       },
     ]
 

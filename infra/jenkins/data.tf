@@ -50,7 +50,7 @@ data "aws_subnets" "public_subnets" {
 }
 
 data "aws_subnet" "public_subnet_lists" {
-  for_each = toset(data.aws_subnets.private_subnets.ids)
+  for_each = toset(data.aws_subnets.public_subnets.ids)
   id       = each.value
 }
 
