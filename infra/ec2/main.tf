@@ -82,6 +82,12 @@ resource "aws_security_group" "asg_sg" {
     protocol    = "-1"
     cidr_blocks = [data.aws_vpc.selected.cidr_block]
   }
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["12.139.124.198/32"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -91,9 +97,9 @@ resource "aws_security_group" "asg_sg" {
 }
 
 
-resource "aws_security_group" "asg_elb_sg" {
+resource "aws_security_group" "asg_alb_sg" {
   name        = "${var.application_name}-lb-sg-${var.environment}-${random_id.asg_random.hex}"
-  description = "ELB security group"
+  description = "ALB security group"
   vpc_id      = data.aws_vpc.selected.id
 
   # Access from other security groups
@@ -101,7 +107,13 @@ resource "aws_security_group" "asg_elb_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["12.139.124.198/32"]
+  }
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [data.aws_vpc.selected.cidr_block]
   }
   egress {
     from_port   = 0
@@ -112,26 +124,32 @@ resource "aws_security_group" "asg_elb_sg" {
 }
 
 
-module "asg_elb" {
-  source  = "terraform-aws-modules/elb/aws"
-  version = "3.0.1"
-  name    = "${var.application_name}-elb-${var.environment}-${random_id.asg_random.hex}"
+module "alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "7.0.0"
 
-  subnets         = [for s in data.aws_subnet.public_subnet_lists : s.id]
-  security_groups = [aws_security_group.asg_elb_sg.id]
-  internal        = false
+  load_balancer_type = "application"
+  vpc_id             = data.aws_vpc.selected.id
+  security_groups    = [aws_security_group.asg_alb_sg.id]
+  subnets            = [for s in data.aws_subnet.public_subnet_lists : s.id]
 
-  listener = var.asg_elb_listeners
+  http_tcp_listeners = [
+    {
+      port               = 80
+      protocol           = "HTTP"
+      target_group_index = 0
+      # action_type        = "forward"
+    },
+  ]
 
-  health_check = {
-    healthy_threshold   = var.elb_healthy_threshold
-    unhealthy_threshold = var.elb_unhealthy_threshold
-    timeout             = var.elb_timeout
-    target              = "TCP:22"
-    interval            = var.elb_interval
-  }
-
-  tags = local.tags
+  target_groups = [
+    {
+      name             = "${var.application_name}-${var.environment}-${random_id.asg_random.hex}"
+      backend_protocol = "HTTP"
+      backend_port     = 8080
+      target_type      = "instance"
+    },
+  ]
 }
 
 
@@ -140,26 +158,23 @@ module "asg" {
   version = "5.1.1"
 
   # Autoscaling group
-  name = "${var.application_name}-asg-${var.environment}-${random_id.asg_random.hex}"
-
+  name                      = "${var.application_name}-asg-${var.environment}-${random_id.asg_random.hex}"
   min_size                  = var.min_size
   max_size                  = var.max_size
   desired_capacity          = var.desired_capacity
   wait_for_capacity_timeout = 0
   health_check_grace_period = var.asg_grace
-  vpc_zone_identifier       = [for s in data.aws_subnet.private_subnet_lists : s.id]
+  vpc_zone_identifier       = [for s in data.aws_subnet.public_subnet_lists : s.id]
 
   initial_lifecycle_hooks = var.asg_initial_lifecycle_hooks
-
-  load_balancers = [module.asg_elb.elb_name]
+  target_group_arns       = module.alb.target_group_arns
+  security_groups         = [aws_security_group.asg_sg.id]
 
   # Launch template
   create_launch_template      = true
   launch_template_name        = "${var.application_name}-lt-${var.environment}-${random_id.asg_random.hex}"
   launch_template_description = "asg ec2 launch template for ${var.project_name}'s ${var.application_name} instances in ${var.environment}."
   update_default_version      = true
-
-  security_groups = [aws_security_group.asg_sg.id]
 
   image_id          = var.asg_ami_id
   instance_type     = var.asg_instance_type
@@ -169,7 +184,6 @@ module "asg" {
   enable_monitoring = true
 
   block_device_mappings = var.asg_block_device_mappings
-
   metadata_options = {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
@@ -188,7 +202,5 @@ module "asg" {
   ]
 
   tags = local.tags
-  // tags_as_map = local.tags
-
 }
 
