@@ -8,3 +8,13 @@ curl https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/
 yum install -y amazon-ssm-agent.rpm
 
 
+# install java 11
+sudo amazon-linux-extras install java-openjdk11 -y;
+
+# Install docker
+sudo yum install docker -y
+sudo systemctl enable --now docker -y
+
+sudo usermod -a -G docker ec2-user
+
+

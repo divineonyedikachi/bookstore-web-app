@@ -8,3 +8,23 @@ curl https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/
 yum install -y amazon-ssm-agent.rpm
 
 
+# install java 11
+sudo amazon-linux-extras install java-openjdk11 -y;
+
+# add jenkins repo
+sudo tee /etc/yum.repos.d/jenkins.repo<<EOT
+[jenkins]
+name=Jenkins
+baseurl=http://pkg.jenkins.io/redhat
+gpgcheck=0
+EOT
+
+# import gpg repo
+sudo rpm --import https://jenkins-ci.org/redhat/jenkins-ci.org.key && \
+    sudo yum repolist;
+
+# install, start and enable jenkins
+sudo yum -y install jenkins && \
+    sudo systemctl start jenkins && \
+    sudo systemctl enable jenkins
+EOF

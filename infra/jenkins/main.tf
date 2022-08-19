@@ -1,5 +1,5 @@
 resource "random_id" "random" {
-  byte_length = 4
+  byte_length = 2
 }
 
 # Instance IAM profile, roles and policies
@@ -82,6 +82,12 @@ resource "aws_security_group" "instance_sg" {
     protocol    = "-1"
     cidr_blocks = [data.aws_vpc.selected.cidr_block]
   }
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["76.111.159.38/32"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -90,9 +96,9 @@ resource "aws_security_group" "instance_sg" {
   }
 }
 
-resource "aws_security_group" "elb_sg" {
+resource "aws_security_group" "alb_sg" {
   name        = "${var.application_name}-lb-sg-${var.environment}-${random_id.random.hex}"
-  description = "ELB security group"
+  description = "ALB security group"
   vpc_id      = data.aws_vpc.selected.id
 
   # Access from other security groups
@@ -100,7 +106,13 @@ resource "aws_security_group" "elb_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [data.aws_vpc.selected.cidr_block]
+  }
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["76.111.159.38/32"]
   }
   egress {
     from_port   = 0
@@ -111,32 +123,38 @@ resource "aws_security_group" "elb_sg" {
 }
 
 
-module "elb" {
-  source  = "terraform-aws-modules/elb/aws"
-  version = "3.0.1"
-  name    = "${var.application_name}-elb-${var.environment}-${random_id.random.hex}"
+module "alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "7.0.0"
 
-  subnets         = [for s in data.aws_subnet.public_subnet_lists : s.id]
-  security_groups = [aws_security_group.elb_sg.id]
-  internal        = false
+  load_balancer_type = "application"
+  vpc_id             = data.aws_vpc.selected.id
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = [for s in data.aws_subnet.public_subnet_lists : s.id]
 
-  listener = var.elb_listeners
+  http_tcp_listeners = [
+    {
+      port               = 80
+      protocol           = "HTTP"
+      target_group_index = 0
+      # action_type        = "forward"
+    },
+  ]
 
-  health_check = {
-    healthy_threshold   = var.elb_healthy_threshold
-    unhealthy_threshold = var.elb_unhealthy_threshold
-    timeout             = var.elb_timeout
-    target              = "TCP:22"
-    interval            = var.elb_interval
-  }
-  instances           = [module.instance.id]
-  number_of_instances = 1
-
-  tags = local.tags
-
-  // depends_on = [
-  //   module.instance,
-  // ]
+  target_groups = [
+    {
+      name             = "${var.application_name}-${var.environment}-${random_id.random.hex}"
+      backend_protocol = "HTTP"
+      backend_port     = 8080
+      target_type      = "instance"
+      targets = [
+        {
+          target_id = module.instance.id
+          port = 8080
+        },
+      ]
+    },
+  ]
 }
 
 
@@ -147,12 +165,12 @@ module "instance" {
   name = "${var.project_name}-${var.application_name}-instance-${var.environment}-${random_id.random.hex}"
   iam_instance_profile = aws_iam_instance_profile.instance_profile.name
 
-  subnet_id       = element(data.aws_subnets.private_subnets.ids, 0)
+  subnet_id       = element(data.aws_subnets.public_subnets.ids, 0)
   vpc_security_group_ids = [aws_security_group.instance_sg.id]
 
   ami          = var.ami_id
   instance_type     = var.instance_type
-  associate_public_ip_address = false
+  associate_public_ip_address = true
   key_name          = var.ssh_key_name
   user_data_base64  = base64encode(local.user_data)
 
