@@ -1,15 +1,21 @@
 pipeline {
     agent any
     stages {
-        stage('Build code') {
+        stage('Chekout code') {
             steps {
                 script {
                     git branch: "main", 
                     credentialsId: 'jenkins-git-token',
                     url: 'https://github.com/hernanku/bookstore-web-app.git'
+                }
+            }
+        }
+        stage('Build code') {
+            steps {
+                script {
                     docker.image('maven:3.8.6-openjdk-8').inside(
                         sh """
-                        mvn clean package -DskipTests
+                            mvn clean package -DskipTests
                         """
                     )
                 }
