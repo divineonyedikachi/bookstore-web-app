@@ -28,3 +28,5 @@ sudo yum -y install jenkins && \
     sudo systemctl start jenkins && \
     sudo systemctl enable jenkins
 EOF
+
+sudo usermod --shell /bin/bash jenkins

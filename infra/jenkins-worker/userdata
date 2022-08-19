@@ -13,7 +13,7 @@ sudo amazon-linux-extras install java-openjdk11 -y;
 
 # Install docker
 sudo yum install docker -y
-sudo systemctl enable --now docker -y
+sudo systemctl enable --now docker
 
 sudo usermod -a -G docker ec2-user
 
