@@ -1,6 +1,11 @@
 pipeline {
     agent none
     stages {
+        stage('Checkout repo') {
+            git branch: 'main',
+            credentialsId: 'jenkins-git',
+            url: 'https://github.com/hernanku/bookstore-web-app.git'
+        }
         stage('Build app') {
             agent {
                 docker { image 'maven:3.8.6-openjdk-8' }
@@ -13,6 +18,16 @@ pipeline {
             }
         }
     }
+    // post {
+    //     // Clean after build
+    //     always {
+    //         cleanWs(cleanWhenNotBuilt: true,
+    //                 deleteDirs: true,
+    //                 disableDeferredWipeout: true,
+    //                 notFailBuild: true
+    //         )
+    //     }
+    // }
 }
 
 
