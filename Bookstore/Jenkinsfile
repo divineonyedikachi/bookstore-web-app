@@ -20,7 +20,7 @@ pipeline {
             steps {
                 sh """
                 cd Bookstore && \
-                mvn clean install -Dspring.datasource.url=${SPRING_DATASOURCE_URL} -Dspring.datasource.username=${SPRING_DATASOURCE_USERNAME} -Dspring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
+                mvn clean install -Dspring-boot.run.arguments='--spring.datasource.url=${SPRING_DATASOURCE_URL} --spring.datasource.username=${SPRING_DATASOURCE_USERNAME} --spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}'
                 """
             }
         }
