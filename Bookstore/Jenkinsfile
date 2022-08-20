@@ -12,10 +12,15 @@ pipeline {
             agent {
                 docker { image 'maven:3.8.6-openjdk-8' }
             }
+            environment {
+                SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3306/bookstoredatabase?autoReconnect=true&useSSL=false"
+                SPRING_DATASOURCE_USERNAME="admin"
+                SPRING_DATASOURCE_PASSWORD=credentials('bookstore-db-pass')
+            }
             steps {
                 sh """
                 cd Bookstore && \
-                mvn clean install -DskipTests
+                mvn clean install -Dspring.datasource.url=${SPRING_DATASOURCE_URL} -Dspring.datasource.username=${SPRING_DATASOURCE_USERNAME} -Dspring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
                 """
             }
         }
@@ -27,33 +32,5 @@ pipeline {
         }
     }
 }
-
-
-
-
-// pipeline {
-//     agent any
-//     stages {
-//         stage('Chekout code') {
-//             steps {
-//                 script {
-//                     git branch: "main", 
-//                     credentialsId: 'jenkins-git-token',
-//                     url: 'https://github.com/hernanku/bookstore-web-app.git'
-//                 }
-//             }
-//         }
-//         stage('Build code') {
-//             steps {
-//                 script {
-//                     docker.image('maven:3.8.6-openjdk-8').inside {
-//                         sh "mvn clean package -DskipTests"
-
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
 
 
