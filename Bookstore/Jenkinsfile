@@ -2,9 +2,11 @@ pipeline {
     agent none
     stages {
         stage('Checkout repo') {
-            git branch: 'main',
-            credentialsId: 'jenkins-git',
-            url: 'https://github.com/hernanku/bookstore-web-app.git'
+            steps {
+                git branch: 'main',
+                credentialsId: 'jenkins-git',
+                url: 'https://github.com/hernanku/bookstore-web-app.git'
+            }
         }
         stage('Build app') {
             agent {

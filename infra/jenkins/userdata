@@ -38,3 +38,7 @@ sudo usermod -aG docker ec2-user
 sudo usermod -aG docker jenkins
 
 sudo usermod --shell /bin/bash jenkins
+
+
+# install git
+sudo yum -y install git
