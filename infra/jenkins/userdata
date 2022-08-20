@@ -29,4 +29,12 @@ sudo yum -y install jenkins && \
     sudo systemctl enable jenkins
 EOF
 
+
+# Install docker
+sudo yum install docker -y
+sudo systemctl enable --now docker
+
+sudo usermod -aG docker ec2-user
+sudo usermod -aG docker jenkins
+
 sudo usermod --shell /bin/bash jenkins

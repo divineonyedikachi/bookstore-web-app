@@ -127,6 +127,7 @@ module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "7.0.0"
 
+  name = "${var.project_name}-${var.application_name}-alb-${random_id.random.hex}"
   load_balancer_type = "application"
   vpc_id             = data.aws_vpc.selected.id
   security_groups    = [aws_security_group.alb_sg.id]
@@ -143,7 +144,7 @@ module "alb" {
 
   target_groups = [
     {
-      name             = "${var.application_name}-${var.environment}-${random_id.random.hex}"
+      name             = "${var.project_name}-${var.application_name}-tg-${var.environment}-${random_id.random.hex}"
       backend_protocol = "HTTP"
       backend_port     = 8080
       target_type      = "instance"
@@ -153,6 +154,17 @@ module "alb" {
           port = 8080
         },
       ]
+      health_check = {
+        enabled             = true
+        interval            = 10
+        path                = "/login"
+        port                = "traffic-port"
+        healthy_threshold   = 3
+        unhealthy_threshold = 3
+        timeout             = 6
+        protocol            = "HTTP"
+      }
+      protocol_version = "HTTP1"
     },
   ]
 }

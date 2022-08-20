@@ -1,26 +1,46 @@
 pipeline {
-    agent any
+    agent none
     stages {
-        stage('Chekout code') {
-            steps {
-                script {
-                    git branch: "main", 
-                    credentialsId: 'jenkins-git-token',
-                    url: 'https://github.com/hernanku/bookstore-web-app.git'
-                }
+        stage('Build app') {
+            agent {
+                docker { image 'maven:3.8.6-openjdk-8' }
             }
-        }
-        stage('Build code') {
             steps {
-                script {
-                    docker.image('maven:3.8.6-openjdk-8').inside(
-                        sh """
-                            mvn clean package -DskipTests
-                        """
-                    )
-                }
+                sh """
+                cd Bookstore && \
+                mvn clean install -DskipTests
+                """
             }
         }
     }
 }
+
+
+
+
+// pipeline {
+//     agent any
+//     stages {
+//         stage('Chekout code') {
+//             steps {
+//                 script {
+//                     git branch: "main", 
+//                     credentialsId: 'jenkins-git-token',
+//                     url: 'https://github.com/hernanku/bookstore-web-app.git'
+//                 }
+//             }
+//         }
+//         stage('Build code') {
+//             steps {
+//                 script {
+//                     docker.image('maven:3.8.6-openjdk-8').inside {
+//                         sh "mvn clean package -DskipTests"
+
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
+
 
