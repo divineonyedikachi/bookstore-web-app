@@ -3,13 +3,14 @@ pipeline {
         docker { image 'maven:3.8.6-openjdk-8' }
     }
     stages {
-        stage('Build app') {  
-            steps {
-                sh """
-                cd Bookstore && \
-                mvn clean install -DskipTests
-                """
-            }
+        stage('Build app') { 
+            dir('Bookstore') {
+                steps {
+                    sh """
+                    mvn clean install -DskipTests
+                    """
+                }
+            } 
         }
     }
     // post {
