@@ -4,6 +4,14 @@ data "aws_region" "current" {}
 data "aws_availability_zones" "available" {}
 
 
+// data "aws_vpc" "selected" {
+//   filter {
+//     name   = "tag:Name"
+//     values = ["${var.project_name}-vpc-${var.environment}"]
+//   }
+// }
+
+
 # bring your own vpc. 
 data "aws_vpc" "selected" {
   filter {
@@ -11,6 +19,14 @@ data "aws_vpc" "selected" {
     values = ["${var.project_name}*"]
   }
 }
+
+// data "aws_subnet_ids" "subnets" {
+//   vpc_id = data.aws_vpc.selected.id
+//   filter {
+//     name   = "tag:Name"
+//     values = ["${var.project_name}-${var.subnet_filter_tag}-${var.environment}"]
+//   }
+// }
 
 # bring your own subnets. 
 data "aws_subnets" "private_subnets" {

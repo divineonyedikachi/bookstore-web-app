@@ -1,26 +1,11 @@
 pipeline {
     agent any
     stages {
-        // stage('Checkout repo') {
-        //     steps {
-        //         git branch: 'main',
-        //         credentialsId: 'jenkins-git',
-        //         url: 'https://github.com/hernanku/bookstore-web-app.git'
-        //     }
-        // }
-        stage('Build app') {
-            agent {
-                docker { image 'maven:3.8.6-openjdk-8' }
-            }
-            environment {
-                SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3306/bookstoredatabase?autoReconnect=true&useSSL=false"
-                SPRING_DATASOURCE_USERNAME="admin"
-                SPRING_DATASOURCE_PASSWORD=credentials('bookstore-db-pass')
-            }
+        stage('Build app') {  
             steps {
                 sh """
                 cd Bookstore && \
-                mvn clean install -Dspring-boot.run.arguments='--spring.datasource.url=${SPRING_DATASOURCE_URL} --spring.datasource.username=${SPRING_DATASOURCE_USERNAME} --spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}'
+                mvn clean install -DskipTests
                 """
             }
         }

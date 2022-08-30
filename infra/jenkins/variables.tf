@@ -1,4 +1,3 @@
-
 variable "vpc_id" {
   type    = string
   default = "vpc-xxxxxxx"
@@ -50,4 +49,18 @@ variable "instance_type" {
 variable "instance_root_device_size" {
   type = number
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

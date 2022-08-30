@@ -86,7 +86,7 @@ resource "aws_security_group" "instance_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["76.111.159.38/32"]
+    cidr_blocks = ["98.218.211.45/32"]
   }
   egress {
     from_port   = 0
@@ -112,7 +112,7 @@ resource "aws_security_group" "alb_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["76.111.159.38/32"]
+    cidr_blocks = ["98.218.211.45/32"]
   }
   egress {
     from_port   = 0
@@ -127,7 +127,7 @@ module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "7.0.0"
 
-  name = "${var.project_name}-${var.application_name}-alb-${random_id.random.hex}"
+  name               = "${var.project_name}-alb-${random_id.random.hex}"
   load_balancer_type = "application"
   vpc_id             = data.aws_vpc.selected.id
   security_groups    = [aws_security_group.alb_sg.id]
@@ -144,14 +144,14 @@ module "alb" {
 
   target_groups = [
     {
-      name             = "${var.project_name}-${var.application_name}-tg-${var.environment}-${random_id.random.hex}"
+      name             = "${var.project_name}-tg-${var.environment}-${random_id.random.hex}"
       backend_protocol = "HTTP"
       backend_port     = 8080
       target_type      = "instance"
       targets = [
         {
           target_id = module.instance.id
-          port = 8080
+          port      = 8080
         },
       ]
       health_check = {
@@ -174,28 +174,36 @@ module "instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "3.5.0"
 
-  name = "${var.project_name}-${var.application_name}-instance-${var.environment}-${random_id.random.hex}"
+  name                 = "${var.project_name}-${var.application_name}-instance-${var.environment}-${random_id.random.hex}"
   iam_instance_profile = aws_iam_instance_profile.instance_profile.name
 
-  subnet_id       = element(data.aws_subnets.public_subnets.ids, 0)
+  subnet_id              = element(data.aws_subnets.public_subnets.ids, 0)
   vpc_security_group_ids = [aws_security_group.instance_sg.id]
 
-  ami          = var.ami_id
-  instance_type     = var.instance_type
+  ami                         = var.ami_id
+  instance_type               = var.instance_type
   associate_public_ip_address = true
-  key_name          = var.ssh_key_name
-  user_data_base64  = base64encode(local.user_data)
+  key_name                    = var.ssh_key_name
+  user_data_base64            = base64encode(local.user_data)
 
   root_block_device = [
     {
       encrypted   = true
       volume_type = "gp3"
       volume_size = var.instance_root_device_size
-      },
-    ]
+    },
+  ]
 
   tags = local.tags
   // tags_as_map = local.tags
 
 }
+
+
+
+
+
+
+
+
 
