@@ -1,0 +1,74 @@
+#!/bin/bash
+
+sudo yum -y update
+
+# Install Amazon ssm Agent 
+cd /tmp
+curl https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm -o amazon-ssm-agent.rpm
+yum install -y amazon-ssm-agent.rpm
+
+
+# install java 8
+sudo yum install java-1.8.0-openjdk.x86_64 -y;
+
+# make nexus directories
+sudo mkdir /app && cd /app
+
+
+# download latest nexus
+sudo wget -O nexus.tar.gz https://download.sonatype.com/nexus/3/latest-unix.tar.gz
+
+# unzip downlaoded nexus archive
+sudo tar -xvf nexus.tar.gz
+
+
+# rename unzipped file
+sudo mv nexus-3* nexus
+
+
+# add nexus user
+sudo adduser nexus;
+sudo chown -R nexus:nexus /app/nexus;
+sudo chown -R nexus:nexus /app/sonatype-work;
+
+
+echo "run_as_user=\"nexus\"" >> greetings.txt
+
+# run nexus as a service
+sudo cat <<EOF > /etc/systemd/system/nexus.service
+[Unit]
+Description=nexus service
+After=network.target
+
+[Service]
+Type=forking
+LimitNOFILE=65536
+User=nexus
+Group=nexus
+ExecStart=/app/nexus/bin/nexus start
+ExecStop=/app/nexus/bin/nexus stop
+User=nexus
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# start nexus on boot
+sudo chkconfig nexus on
+
+# start nexus service
+sudo systemctl start nexus
+
+
+
+
+
+
+
+
+
+
+
+
+
